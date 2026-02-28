@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Equipe d'Anvers — Story Builder</title>
+<style>
+@font-face {
+  font-family: 'Monotalic';
+  src: url('Sources/Monotalic-WideMedium.ttf') format('truetype');
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --f: 'Monotalic', monospace;
+  --fs: 24px;
+  --lh: 1.18;
+  --ls: 9.6px;
+  --b: 12px;
+}
+
+body {
+  background: #000;
+  color: #fff;
+  font-family: var(--f);
+  font-size: var(--fs);
+  line-height: var(--lh);
+  letter-spacing: var(--ls);
+  text-transform: uppercase;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.wrap {
+  display: flex;
+  flex: 1;
+  height: 100vh;
+  padding: 10px;
+  gap: 10px;
+}
+
+/* ——— FORM PANEL ——— */
+.form-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 48px;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.form-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 60px;
+}
+
+.tool-title p { display: block; }
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--b);
+}
+
+.section-label {
+  opacity: 0.3;
+  display: block;
+}
+
+.field-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--b);
+}
+
+.field-label {
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 96px;
+}
+
+input[type="text"],
+textarea {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  font-family: var(--f);
+  font-size: var(--fs);
+  line-height: var(--lh);
+  letter-spacing: var(--ls);
+  text-transform: uppercase;
+  outline: none;
+  width: 100%;
+  padding: 2px 0;
+  resize: none;
+}
+
+input::placeholder, textarea::placeholder {
+  opacity: 0.25;
+}
+
+textarea {
+  min-height: calc(var(--fs) * var(--lh));
+  overflow: hidden;
+}
+
+/* Mode toggle */
+.toggle-row {
+  display: flex;
+  gap: var(--b);
+}
+
+.toggle-btn {
+  height: 34px;
+  flex: 1;
+  max-width: 237px;
+  border-radius: 67px;
+  border: 1px solid #fff;
+  background: transparent;
+  color: #fff;
+  font-family: var(--f);
+  font-size: 16px;
+  letter-spacing: var(--ls);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.toggle-btn.active {
+  background: #fff;
+  color: #000;
+}
+
+/* Action buttons */
+.action-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-family: var(--f);
+  font-size: var(--fs);
+  line-height: var(--lh);
+  letter-spacing: var(--ls);
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  display: block;
+}
+
+.action-btn:hover { opacity: 0.6; }
+
+.status-text {
+  opacity: 0.35;
+  font-size: 16px;
+  letter-spacing: 4px;
+  min-height: 1.18em;
+  display: block;
+}
+
+/* Footer */
+.form-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-top: 48px;
+  flex-shrink: 0;
+}
+
+.form-footer p {
+  font-size: 16px;
+  letter-spacing: 4px;
+  line-height: 1.5;
+}
+
+.monogram-footer {
+  height: 44px;
+  filter: invert(1);
+  flex-shrink: 0;
+}
+
+/* ——— PREVIEW PANEL ——— */
+.preview-panel {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-wrap {
+  border: 2px solid rgba(255,255,255,0.4);
+  border-radius: 7px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+#preview {
+  display: block;
+  width: 405px;
+  height: 720px;
+}
+
+/* ——— SPACER ——— */
+.spacer { flex: 1; min-width: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- FORM PANEL -->
+  <div class="form-panel">
+    <div class="form-inner">
+
+      <div class="tool-title">
+        <p>Equipe d'Anvers</p>
+        <p>(IG) Story Builder</p>
+      </div>
+
+      <!-- Identity -->
+      <div class="section">
+        <span class="section-label">Identity</span>
+        <div class="field-row">
+          <span class="field-label">Name:</span>
+          <input type="text" id="f-name" placeholder="Horse name" autocomplete="off">
+        </div>
+        <div class="field-row">
+          <span class="field-label">Line 1:</span>
+          <input type="text" id="f-line1" placeholder="e.g. Rider" autocomplete="off">
+        </div>
+        <div class="field-row">
+          <span class="field-label">Line 2:</span>
+          <input type="text" id="f-line2" placeholder="e.g. Owner" autocomplete="off">
+        </div>
+      </div>
+
+      <!-- Competition -->
+      <div class="section">
+        <span class="section-label">Competition</span>
+        <div class="field-row">
+          <span class="field-label">No.:</span>
+          <input type="text" id="f-number" placeholder="02" autocomplete="off" style="max-width:96px;">
+        </div>
+        <div class="field-row">
+          <span class="field-label">Place:</span>
+          <input type="text" id="f-place" placeholder="Peelbergen" autocomplete="off">
+        </div>
+        <div class="field-row">
+          <span class="field-label">Height:</span>
+          <input type="text" id="f-height" placeholder="1.20" autocomplete="off" style="max-width:96px;">
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="section">
+        <span class="section-label">Notes</span>
+        <textarea id="f-notes" rows="2" placeholder="Extra information..."></textarea>
+      </div>
+
+      <!-- Mode -->
+      <div class="section">
+        <span class="section-label">Mode</span>
+        <div class="toggle-row">
+          <button class="toggle-btn active" id="btn-dark"  onclick="setMode('dark')">Dark</button>
+          <button class="toggle-btn"        id="btn-light" onclick="setMode('light')">Light</button>
+        </div>
+      </div>
+
+      <!-- Source -->
+      <div class="section">
+        <span class="section-label">Source</span>
+        <button class="action-btn" onclick="document.getElementById('video-input').click()">→ Upload video</button>
+        <input type="file" id="video-input" accept="video/*" style="display:none">
+        <span class="status-text" id="video-name"></span>
+      </div>
+
+      <!-- Export -->
+      <div class="section">
+        <span class="section-label">Export</span>
+        <button class="action-btn" id="btn-export" onclick="startExport()">→ Export video</button>
+        <span class="status-text" id="export-status"></span>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="form-footer">
+      <img src="Sources/Monogram.svg" class="monogram-footer" alt="E D'A">
+      <p style="text-align:center;">A Graphic Tool<br>by Typograaf</p>
+      <p style="text-align:right;">Version 01<br>2026/02/28</p>
+    </div>
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="preview-panel">
+    <div class="preview-wrap">
+      <canvas id="preview" width="810" height="1440"></canvas>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+
+</div>
+
+<!-- hidden video element -->
+<video id="video-el" style="display:none" playsinline muted></video>
+
+<script>
+// ============================================================
+//  STATE
+// ============================================================
+const S = {
+  name: '', line1: '', line2: '',
+  number: '', place: '', height: '',
+  notes: '',
+  mode: 'dark',
+  videoLoaded: false,
+};
+
+// ============================================================
+//  CONSTANTS
+// ============================================================
+const W = 1080, H = 1920;
+const PAD = 24;                    // video padding
+const FS  = 24;                    // font size
+const LH  = FS * 1.18;            // ~28.3px line height
+const LS  = '9.6px';              // letter spacing
+const G12 = 12, G24 = 24, G60 = 60;
+
+// ============================================================
+//  ELEMENTS
+// ============================================================
+const preview  = document.getElementById('preview');
+const pCtx     = preview.getContext('2d');
+const videoEl  = document.getElementById('video-el');
+
+// ============================================================
+//  FONT & MONOGRAM
+// ============================================================
+const fontFace = new FontFace('Monotalic', 'url(Sources/Monotalic-WideMedium.ttf)');
+fontFace.load().then(f => { document.fonts.add(f); scheduleRender(); });
+
+const monoImg = new Image();
+monoImg.onload = scheduleRender;
+monoImg.src = 'Sources/Monogram.svg';
+
+// Inverted monogram for dark mode
+const monoImgInv = new Image();
+// We'll build an inverted version via an offscreen canvas once monoImg loads
+let monoImgInvReady = false;
+monoImg.onload = () => {
+  buildInvertedMono();
+  scheduleRender();
+};
+
+function buildInvertedMono() {
+  const oc = document.createElement('canvas');
+  oc.width  = 143; oc.height = 84;
+  const oc2 = oc.getContext('2d');
+  oc2.drawImage(monoImg, 0, 0);
+  // invert pixel data
+  const id = oc2.getImageData(0, 0, 143, 84);
+  for (let i = 0; i < id.data.length; i += 4) {
+    id.data[i]   = 255 - id.data[i];
+    id.data[i+1] = 255 - id.data[i+1];
+    id.data[i+2] = 255 - id.data[i+2];
+  }
+  oc2.putImageData(id, 0, 0);
+  monoImgInv.src = oc.toDataURL();
+  monoImgInv.onload = () => { monoImgInvReady = true; scheduleRender(); };
+}
+
+// ============================================================
+//  INPUTS
+// ============================================================
+['name','line1','line2','number','place','height','notes'].forEach(id => {
+  const el = document.getElementById('f-' + id);
+  el.addEventListener('input', () => {
+    S[id] = el.value;
+    if (id === 'notes') autoGrow(el);
+    scheduleRender();
+  });
+});
+
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+document.getElementById('video-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('video-name').textContent = file.name;
+  videoEl.src = URL.createObjectURL(file);
+  videoEl.load();
+  S.videoLoaded = true;
+  videoEl.addEventListener('loadeddata', () => {
+    videoEl.play();
+    startRenderLoop();
+  }, { once: true });
+});
+
+function setMode(m) {
+  S.mode = m;
+  document.getElementById('btn-dark').classList.toggle('active',  m === 'dark');
+  document.getElementById('btn-light').classList.toggle('active', m === 'light');
+  scheduleRender();
+}
+
+// ============================================================
+//  RENDER SCHEDULING
+// ============================================================
+let rafPending = false;
+function scheduleRender() {
+  if (!rafPending) {
+    rafPending = true;
+    requestAnimationFrame(() => { rafPending = false; drawStory(pCtx, W, H); });
+  }
+}
+
+let loopRaf = null;
+function startRenderLoop() {
+  if (loopRaf) cancelAnimationFrame(loopRaf);
+  function loop() {
+    drawStory(pCtx, W, H);
+    loopRaf = requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+// ============================================================
+//  CORE DRAW  (draws at 1080×1920 into ctx, scaled via CSS)
+// ============================================================
+function drawStory(ctx, cW, cH) {
+  const dark   = S.mode === 'dark';
+  const BG     = dark ? '#000' : '#fff';
+  const FG     = dark ? '#fff' : '#000';
+  const FG30   = dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)';
+  const FG15   = dark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)';
+
+  // canvas is rendered at W×H and displayed smaller via CSS width/height
+  ctx.canvas.width  = cW;
+  ctx.canvas.height = cH;
+
+  // — Background
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, cW, cH);
+
+  // — Video geometry
+  const vAR  = (S.videoLoaded && videoEl.videoWidth)
+               ? videoEl.videoHeight / videoEl.videoWidth
+               : 9 / 16;
+  const vidX = PAD;
+  const vidW = cW - PAD * 2;
+  const vidH = vidW * vAR;
+  const vidY = (cH - vidH) / 2;
+  const topH = vidY;          // height available above video
+  const botH = cH - vidY - vidH; // height available below video
+
+  // — Setup font
+  ctx.font = `${FS}px Monotalic`;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = LS;
+  ctx.fillStyle = FG;
+  ctx.textBaseline = 'alphabetic';
+
+  // —— TOP SECTION ——————————————————————————————————————————
+  // Calculate total text block height to centre it
+  const notesLines = S.notes
+    ? wrapText(ctx, S.notes.toUpperCase(), cW - PAD * 8)
+    : ['—'];
+  const blockH =
+      LH               // (no.)
+    + G24 + LH         // horse name
+    + G12 + LH         // line1 / line2
+    + G12 + LH         // height / place
+    + G60 + LH         // (notes) label
+    + G12 + LH * notesLines.length;
+
+  let y = topH / 2 - blockH / 2 + LH;
+
+  // (No.)
+  ctx.textAlign = 'center';
+  const noStr = S.number
+    ? '(' + String(S.number).padStart(2, '0') + ')'
+    : '(00)';
+  ctx.fillStyle = S.number ? FG : FG30;
+  fillTextLS(ctx, noStr, cW / 2, y);
+
+  y += G24 + LH;
+
+  // Horse name
+  ctx.fillStyle = S.name ? FG : FG30;
+  fillTextLS(ctx, (S.name || 'Horse Name').toUpperCase(), cW / 2, y);
+
+  y += G12 + LH;
+
+  // Line 1 ——— Line 2
+  const l1 = (S.line1 || 'Line 1').toUpperCase();
+  const l2 = (S.line2 || 'Line 2').toUpperCase();
+  ctx.fillStyle = (S.line1 || S.line2) ? FG : FG30;
+  drawDividerRow(ctx, l1, l2, cW, y, FG, (S.line1 || S.line2) ? FG : FG30);
+
+  y += G12 + LH;
+
+  // Height (left) + Place (right)
+  const htStr = (S.height || '—').toUpperCase();
+  const plStr = (S.place  || '—').toUpperCase();
+  const hasHP = S.height || S.place;
+  ctx.fillStyle = hasHP ? FG : FG30;
+  ctx.textAlign = 'left';
+  fillTextLS(ctx, htStr, PAD * 4, y);
+  ctx.textAlign = 'right';
+  fillTextLS(ctx, plStr, cW - PAD * 4, y);
+
+  y += G60 + LH;
+
+  // (notes) label
+  ctx.textAlign = 'center';
+  ctx.fillStyle = FG30;
+  fillTextLS(ctx, '(Notes)', cW / 2, y);
+
+  y += G12 + LH;
+
+  // Notes text
+  ctx.fillStyle = S.notes ? FG : FG30;
+  notesLines.forEach((line, i) => {
+    fillTextLS(ctx, line, cW / 2, y + i * LH);
+  });
+
+  // —— VIDEO ————————————————————————————————————————————————
+  ctx.save();
+  ctx.beginPath();
+  rrect(ctx, vidX, vidY, vidW, vidH, 12);
+  ctx.clip();
+
+  if (S.videoLoaded && videoEl.readyState >= 2) {
+    ctx.drawImage(videoEl, vidX, vidY, vidW, vidH);
+  } else {
+    ctx.fillStyle = FG15;
+    ctx.fillRect(vidX, vidY, vidW, vidH);
+    ctx.font = `${FS}px Monotalic`;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = LS;
+    ctx.fillStyle = FG30;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    fillTextLS(ctx, 'Upload Video', cW / 2, vidY + vidH / 2);
+    ctx.textBaseline = 'alphabetic';
+  }
+  ctx.restore();
+
+  // —— BOTTOM SECTION (monogram) ————————————————————————————
+  const mW = 64, mH = 44;
+  const mX = cW / 2 - mW / 2;
+  const mY = vidY + vidH + botH / 2 - mH / 2;
+
+  if (dark && monoImgInvReady) {
+    ctx.drawImage(monoImgInv, mX, mY, mW, mH);
+  } else if (!dark && monoImg.complete && monoImg.naturalWidth) {
+    ctx.drawImage(monoImg, mX, mY, mW, mH);
+  }
+}
+
+// ============================================================
+//  HELPERS
+// ============================================================
+
+/** Fill text — uses letterSpacing if available, else manual kern */
+function fillTextLS(ctx, text, x, y) {
+  if ('letterSpacing' in ctx) {
+    ctx.letterSpacing = LS;
+    ctx.fillText(text, x, y);
+    return;
+  }
+  // manual fallback
+  const spacing = 9.6;
+  const chars  = [...text];
+  const widths = chars.map(c => ctx.measureText(c).width + spacing);
+  const total  = widths.reduce((a, b) => a + b, 0) - spacing;
+  const savedAlign = ctx.textAlign;
+  let cx = (ctx.textAlign === 'center')  ? x - total / 2
+         : (ctx.textAlign === 'right')   ? x - total
+         : x;
+  ctx.textAlign = 'left';
+  chars.forEach((c, i) => { ctx.fillText(c, cx, y); cx += widths[i]; });
+  ctx.textAlign = savedAlign;
+}
+
+/** Draw  LINE1  ———————  LINE2  row with expanding rule */
+function drawDividerRow(ctx, l1, l2, cW, y, lineColor, textColor) {
+  const padX = PAD * 4;
+  const gap  = G24;
+
+  if ('letterSpacing' in ctx) ctx.letterSpacing = LS;
+  const m1 = ctx.measureText(l1).width;
+  const m2 = ctx.measureText(l2).width;
+
+  ctx.fillStyle = textColor;
+  ctx.textAlign = 'left';
+  fillTextLS(ctx, l1, padX, y);
+
+  ctx.textAlign = 'right';
+  fillTextLS(ctx, l2, cW - padX, y);
+
+  // horizontal rule between them
+  const rx1 = padX + m1 + gap;
+  const rx2 = cW - padX - m2 - gap;
+  if (rx2 > rx1) {
+    ctx.save();
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth   = 1;
+    ctx.globalAlpha = ctx.fillStyle === 'rgba(255,255,255,0.3)' ? 0.3 : 1;
+    ctx.beginPath();
+    ctx.moveTo(rx1, y - LH * 0.28);
+    ctx.lineTo(rx2, y - LH * 0.28);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.textAlign = 'center';
+}
+
+/** Wrap text to lines that fit within maxWidth */
+function wrapText(ctx, text, maxWidth) {
+  if ('letterSpacing' in ctx) ctx.letterSpacing = LS;
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    const test = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(test).width > maxWidth && cur) {
+      lines.push(cur); cur = w;
+    } else { cur = test; }
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [''];
+}
+
+/** Rounded rect path */
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y,     x + w, y + r,     r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x,     y + h, x,     y + h - r, r);
+  ctx.lineTo(x,     y + r);
+  ctx.arcTo(x,     y,     x + r, y,         r);
+  ctx.closePath();
+}
+
+// ============================================================
+//  EXPORT
+// ============================================================
+let exporting = false;
+
+async function startExport() {
+  if (exporting) return;
+  if (!S.videoLoaded) {
+    document.getElementById('export-status').textContent = 'Upload a video first.';
+    return;
+  }
+
+  exporting = true;
+  const statusEl = document.getElementById('export-status');
+  const btnEl    = document.getElementById('btn-export');
+  statusEl.textContent = 'Recording…';
+  btnEl.textContent    = '→ Recording…';
+
+  // Create full-res export canvas
+  const ec  = document.createElement('canvas');
+  ec.width  = W; ec.height = H;
+  const ectx = ec.getContext('2d');
+
+  // Restart video
+  if (loopRaf) { cancelAnimationFrame(loopRaf); loopRaf = null; }
+  videoEl.pause();
+  videoEl.currentTime = 0;
+  await new Promise(res => videoEl.addEventListener('seeked', res, { once: true }));
+  videoEl.muted = false;
+  videoEl.play();
+
+  // Choose mime type
+  const mimeType = MediaRecorder.isTypeSupported('video/mp4')
+    ? 'video/mp4'
+    : MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+      ? 'video/webm;codecs=vp9'
+      : 'video/webm';
+  const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
+
+  // Capture canvas stream + audio
+  const stream = ec.captureStream(30);
+  if (videoEl.captureStream) {
+    videoEl.captureStream().getAudioTracks().forEach(t => stream.addTrack(t));
+  } else if (videoEl.mozCaptureStream) {
+    videoEl.mozCaptureStream().getAudioTracks().forEach(t => stream.addTrack(t));
+  }
+
+  const chunks = [];
+  const mr = new MediaRecorder(stream, { mimeType });
+  mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+  mr.onstop = () => {
+    const blob = new Blob(chunks, { type: mimeType });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `equipe-danvers-story.${ext}`;
+    a.click();
+    statusEl.textContent = 'Done ✓';
+    btnEl.textContent    = '→ Export video';
+    exporting = false;
+    videoEl.muted = true;
+    videoEl.play();
+    startRenderLoop();
+  };
+
+  mr.start(100); // collect data every 100ms
+
+  // Render loop for export canvas
+  function exportLoop() {
+    drawStory(ectx, W, H);
+    if (!videoEl.ended) {
+      requestAnimationFrame(exportLoop);
+    } else {
+      mr.stop();
+    }
+  }
+  videoEl.addEventListener('ended', () => mr.stop(), { once: true });
+  exportLoop();
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+scheduleRender();
+</script>
+</body>
+</html>
