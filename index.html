@@ -690,7 +690,13 @@ async function startExport() {
   videoEl.pause();
   videoEl.loop = false;
   videoEl.currentTime = 0;
-  await new Promise(res => videoEl.addEventListener('seeked', res, { once: true }));
+  // Wait for seek — with a timeout fallback in case currentTime was already 0
+  await new Promise(res => {
+    let done = false;
+    const finish = () => { if (!done) { done = true; res(); } };
+    videoEl.addEventListener('seeked', finish, { once: true });
+    setTimeout(finish, 500); // fallback if seeked never fires
+  });
   videoEl.muted = false;
   await videoEl.play().catch(() => {});
 
