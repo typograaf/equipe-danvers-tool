@@ -6,10 +6,6 @@
 <title>Equipe d'Anvers — Story Builder</title>
 <link rel="icon" type="image/png" href="Sources/favicon.png">
 <link rel="apple-touch-icon" href="Sources/webclip.png">
-<script type="module">
-  import * as mp4Muxer from 'https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/+esm';
-  window.mp4Muxer = mp4Muxer;
-</script>
 <style>
 @font-face {
   font-family: 'Monotalic';
@@ -673,7 +669,12 @@ function rrect(ctx, x, y, w, h, r) {
 }
 
 // ============================================================
-//  EXPORT
+//  EXPORT  — MediaRecorder + preview.captureStream(30) + RAF draw loop
+//
+//  captureStream(30) auto-samples the canvas at 30 fps — no requestFrame()
+//  or requestVideoFrameCallback needed.  A plain RAF loop keeps the canvas
+//  updated via drawStory(), which draws the live video frame each tick.
+//  Audio is captured from the video element via its own captureStream().
 // ============================================================
 let exporting = false;
 
@@ -687,143 +688,121 @@ async function startExport() {
   exporting = true;
   const statusEl = document.getElementById('export-status');
   const btnEl    = document.getElementById('btn-export');
-  statusEl.textContent = 'Preparing…';
-  btnEl.textContent    = '→ Exporting…';
 
-  if (loopRaf) { cancelAnimationFrame(loopRaf); loopRaf = null; }
-  videoEl.pause();
-  videoEl.loop  = false;
-  videoEl.muted = false;
-  videoEl.currentTime = 0;
-  await new Promise(res => {
-    let done = false;
-    const finish = () => { if (!done) { done = true; res(); } };
-    videoEl.addEventListener('seeked', finish, { once: true });
-    setTimeout(finish, 500);
-  });
-
-  // Render once to lock in canvas dimensions
-  const ec   = document.createElement('canvas');
-  const ectx = ec.getContext('2d');
-  drawStory(ectx, W);
-  const cW = ec.width, cH = ec.height;
-  const duration = videoEl.duration || 0;
-
-  // Wait for mp4-muxer module
-  await new Promise(res => { const p = () => window.mp4Muxer ? res() : setTimeout(p, 50); p(); });
-  const { Muxer, ArrayBufferTarget } = window.mp4Muxer;
-
-  // ── Audio via Web Audio API ───────────────────────────────
-  const audioCtx = new AudioContext({ sampleRate: 44100 });
-  await audioCtx.resume();
-  const mediaSrc = audioCtx.createMediaElementSource(videoEl);
-  const canAudio = typeof AudioEncoder !== 'undefined' && typeof AudioData !== 'undefined';
-  let audioEncoder = null, scriptNode = null;
-
-  if (canAudio) {
-    audioEncoder = new AudioEncoder({
-      output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
-      error:  e => console.warn('AudioEncoder:', e),
-    });
-    audioEncoder.configure({ codec: 'mp4a.40.2', sampleRate: 44100, numberOfChannels: 2, bitrate: 192_000 });
-
-    if (window.MediaStreamTrackProcessor) {
-      const dest = audioCtx.createMediaStreamDestination();
-      mediaSrc.connect(dest);
-      mediaSrc.connect(audioCtx.destination);
-      const reader = new MediaStreamTrackProcessor({ track: dest.stream.getAudioTracks()[0] }).readable.getReader();
-      (async () => {
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done || stopped) { reader.cancel(); break; }
-          if (audioEncoder.state === 'configured') audioEncoder.encode(value);
-          value.close();
-        }
-      })();
-    } else {
-      // Safari fallback
-      scriptNode = audioCtx.createScriptProcessor(4096, 2, 2);
-      mediaSrc.connect(scriptNode);
-      scriptNode.connect(audioCtx.destination);
-      let aTime = 0;
-      scriptNode.onaudioprocess = e => {
-        if (stopped || audioEncoder.state !== 'configured') return;
-        const L = e.inputBuffer.getChannelData(0), R = e.inputBuffer.getChannelData(1);
-        const buf = new Float32Array(L.length * 2);
-        buf.set(L); buf.set(R, L.length);
-        const ad = new AudioData({ format: 'f32-planar', sampleRate: 44100, numberOfFrames: L.length, numberOfChannels: 2, timestamp: aTime, data: buf });
-        audioEncoder.encode(ad); ad.close();
-        aTime += Math.round(L.length / 44100 * 1_000_000);
-      };
-    }
-  } else {
-    mediaSrc.connect(audioCtx.destination);
-  }
-
-  // ── Muxer ─────────────────────────────────────────────────
-  const target = new ArrayBufferTarget();
-  const muxer  = new Muxer({
-    target,
-    video: { codec: 'avc', width: cW, height: cH },
-    ...(canAudio ? { audio: { codec: 'aac', sampleRate: 44100, numberOfChannels: 2 } } : {}),
-    fastStart: 'in-memory',
-    firstTimestampBehavior: 'offset',
-  });
-
-  // ── VideoEncoder ──────────────────────────────────────────
-  const videoEncoder = new VideoEncoder({
-    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-    error:  e => console.error('VideoEncoder:', e),
-  });
-  videoEncoder.configure({ codec: 'avc1.640033', width: cW, height: cH, bitrate: 15_000_000, framerate: 30 });
-
-  // ── Finish ────────────────────────────────────────────────
-  let stopped = false, frameCount = 0;
-
-  async function finish() {
-    if (stopped) return;
-    stopped = true;
-    if (scriptNode) scriptNode.disconnect();
-    try {
-      await videoEncoder.flush(); videoEncoder.close();
-      if (audioEncoder) { await audioEncoder.flush(); audioEncoder.close(); }
-      if (frameCount === 0) throw new Error('No frames were encoded — encoder may have rejected the configuration');
-      muxer.finalize();
-      const blob = new Blob([target.buffer], { type: 'video/mp4' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href = url; a.download = 'equipe-danvers-story.mp4'; a.click();
-      URL.revokeObjectURL(url);
-      statusEl.textContent = 'Done ✓';
-    } catch (err) {
-      console.error(err);
-      statusEl.textContent = `Failed: ${err.message}`;
-    }
+  function done(msg) {
+    statusEl.textContent = msg;
     btnEl.textContent = '→ Export video';
     exporting = false;
-    audioCtx.close();
-    videoEl.muted = true; videoEl.loop = true;
+    videoEl.muted = true;
+    videoEl.loop  = true;
     videoEl.play().catch(() => {});
     startRenderLoop();
   }
 
-  // ── Frame loop ────────────────────────────────────────────
-  await videoEl.play().catch(() => {});
-  videoEl.addEventListener('ended', finish, { once: true });
+  statusEl.textContent = 'Preparing…';
+  btnEl.textContent    = '→ Exporting…';
 
-  function onVideoFrame(_, metadata) {
-    if (stopped) return;
-    drawStory(ectx, W);
-    const ts    = Math.round(metadata.mediaTime * 1_000_000);
-    const frame = new VideoFrame(ec, { timestamp: ts });
-    videoEncoder.encode(frame, { keyFrame: frameCount % 30 === 0 });
-    frame.close();
-    frameCount++;
-    if (duration > 0)
-      statusEl.textContent = `Exporting… ${Math.min(100, Math.round(metadata.mediaTime / duration * 100))}%`;
-    videoEl.requestVideoFrameCallback(onVideoFrame);
+  // ── Stop preview loop, seek to start ─────────────────────
+  if (loopRaf) { cancelAnimationFrame(loopRaf); loopRaf = null; }
+  videoEl.pause();
+  videoEl.loop  = false;
+  videoEl.muted = false;  // unmute so captureStream() captures audio
+  videoEl.currentTime = 0;
+  await new Promise(res => {
+    let d = false;
+    const cb = () => { if (!d) { d = true; res(); } };
+    videoEl.addEventListener('seeked', cb, { once: true });
+    setTimeout(cb, 600);
+  });
+
+  const duration = videoEl.duration || 0;
+
+  // ── Check captureStream support ───────────────────────────
+  if (typeof preview.captureStream !== 'function') {
+    done('canvas.captureStream not supported — try Chrome or Safari 15+');
+    return;
   }
-  videoEl.requestVideoFrameCallback(onVideoFrame);
+
+  // ── Draw once to lock in canvas dimensions, then start stream ──
+  drawStory(pCtx, W);
+  statusEl.textContent = `Preparing… ${preview.width}×${preview.height}`;
+
+  // captureStream(30): browser auto-samples canvas at 30 fps
+  const canvasStream     = preview.captureStream(30);
+  const canvasVideoTrack = canvasStream.getVideoTracks()[0];
+  if (!canvasVideoTrack) {
+    done('Could not capture canvas stream'); return;
+  }
+
+  // ── Audio from source video ───────────────────────────────
+  let audioTracks = [];
+  if (typeof videoEl.captureStream === 'function') {
+    try { audioTracks = videoEl.captureStream().getAudioTracks(); } catch {}
+  }
+
+  // ── Combined stream ───────────────────────────────────────
+  const stream = new MediaStream([canvasVideoTrack, ...audioTracks]);
+
+  // ── Best available MIME type ──────────────────────────────
+  const mimeType = [
+    'video/mp4; codecs=h264,aac',
+    'video/mp4; codecs=avc1',
+    'video/mp4',
+    'video/webm; codecs=vp9,opus',
+    'video/webm; codecs=vp8,opus',
+    'video/webm',
+  ].find(m => MediaRecorder.isTypeSupported(m)) || '';
+
+  let recorder;
+  try {
+    recorder = new MediaRecorder(stream, {
+      ...(mimeType ? { mimeType } : {}),
+      videoBitsPerSecond: 8_000_000,
+    });
+  } catch (e) {
+    done(`Export not supported on this browser: ${e.message}`); return;
+  }
+
+  const chunks = [];
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+  recorder.onerror         = e => { done(`Recording error: ${e.error?.message || e}`); };
+  recorder.onstop          = () => {
+    const type = recorder.mimeType || mimeType || 'video/webm';
+    const ext  = type.includes('mp4') ? 'mp4' : 'webm';
+    const blob = new Blob(chunks, { type });
+    Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: `equipe-danvers-story.${ext}`,
+    }).click();
+    done('Done ✓');
+  };
+
+  recorder.start(200);   // flush a chunk every 200 ms
+
+  // ── Start playback ────────────────────────────────────────
+  try {
+    await videoEl.play();
+  } catch (e) {
+    recorder.stop();
+    done(`Playback failed: ${e.message}`); return;
+  }
+
+  videoEl.addEventListener('ended', () => {
+    if (recorder.state !== 'inactive') recorder.stop();
+  }, { once: true });
+
+  // ── RAF draw loop ─────────────────────────────────────────
+  // Keeps the preview canvas refreshed so captureStream(30) always
+  // samples a current frame.  drawStory() calls drawImage(videoEl)
+  // which captures whatever frame the video is at that instant.
+  function drawLoop() {
+    if (recorder.state !== 'recording') return;
+    drawStory(pCtx, W);
+    if (duration > 0)
+      statusEl.textContent = `Exporting… ${Math.min(100, Math.round(videoEl.currentTime / duration * 100))}%`;
+    requestAnimationFrame(drawLoop);
+  }
+  drawLoop();
 }
 
 // ============================================================
