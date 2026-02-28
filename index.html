@@ -178,9 +178,10 @@ textarea::placeholder { opacity: 0.25; }
 
 #preview {
   display: block;
-  /* rendered at 1080×1920, displayed via CSS */
-  height: calc(100vh - 20px);
-  width: auto;
+  /* Canvas renders at 1080×1920. At 0.5 scale: 540×960, text = 12px.
+     Cap height so text never exceeds 12px, with 24px margin top+bottom. */
+  height: min(960px, calc(100vh - 20px - 48px));
+  width: auto; /* intrinsic 9:16 maintained */
 }
 
 /* ——— SPACER ——— */
