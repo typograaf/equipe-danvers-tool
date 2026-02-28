@@ -174,10 +174,10 @@ textarea::placeholder { opacity: 0.25; }
 
 #preview {
   display: block;
-  /* Canvas renders at 1080×1920. At 0.5 scale: 540×960, text = 12px.
-     Cap height so text never exceeds 12px, with 24px margin top+bottom. */
-  height: min(960px, calc(100vh - 20px - 48px));
-  width: auto; /* intrinsic 9:16 maintained */
+  /* Fixed at 0.5× scale: 1080px canvas → 540px display, 24px text → 12px visual.
+     Height is auto so it follows intrinsic canvas ratio (grows if notes are long). */
+  width: 540px;
+  height: auto;
 }
 
 /* ——— SPACER ——— */
@@ -268,7 +268,7 @@ textarea::placeholder { opacity: 0.25; }
 
 <script>
 // ============================================================
-//  STATE
+//  STATE & CONSTANTS
 // ============================================================
 const S = {
   name: '', line1: '', line2: '',
@@ -278,44 +278,42 @@ const S = {
   videoLoaded: false,
 };
 
-// ============================================================
-//  CONSTANTS
-// ============================================================
-const W = 1080, H = 1920;
-const PAD = 24;                    // video padding
-const FS  = 24;                    // font size
-const LH  = FS * 1.18;            // ~28.3px line height
-const LS  = '9.6px';              // letter spacing
+const W   = 1080;          // canvas render width (always)
+const PAD = 24;            // edge padding for video
+const FS  = 24;            // font size on canvas
+const LH  = FS * 1.18;    // ~28.32px
+const LS  = '9.6px';      // letter-spacing (40% of 24px)
 const G12 = 12, G24 = 24, G60 = 60;
+const CONTENT_PAD = 80;   // breathing room above/below text block
 
 // ============================================================
-//  ELEMENTS
+//  MONOGRAM  — inlined SVG, no server needed
 // ============================================================
-const preview  = document.getElementById('preview');
-const pCtx     = preview.getContext('2d');
-const videoEl  = document.getElementById('video-el');
+const MONO_SVG = `<svg width="143" height="84" viewBox="0 0 143 84" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M75.5852 29.808V35.64H44.3192V0H74.3432V5.832H50.7992V14.634H73.1552V19.926H50.7992V29.808H75.5852Z" fill="COLOR"/><path d="M0 48H15.228C21.42 48 25.974 49.638 28.89 52.914C31.806 56.19 33.264 60.456 33.264 65.712C33.264 71.364 31.86 75.774 29.052 78.942C26.28 82.074 21.87 83.64 15.822 83.64H0V48ZM15.66 77.808C19.368 77.808 22.14 76.908 23.976 75.108C25.848 73.308 26.784 70.176 26.784 65.712C26.784 62.04 25.902 59.142 24.138 57.018C22.374 54.894 19.35 53.832 15.066 53.832H6.48V77.808H15.66Z" fill="COLOR"/><path d="M51.2312 62.256C54.9392 61.932 57.7112 60.996 59.5472 59.448C61.3832 57.864 62.3012 56.028 62.3012 53.94C62.3012 53.436 62.2292 53.04 62.0852 52.752H61.9232C61.7792 53.724 61.3832 54.462 60.7352 54.966C60.0872 55.47 59.2772 55.722 58.3052 55.722C57.1172 55.722 56.1272 55.38 55.3352 54.696C54.5792 53.976 54.2012 52.968 54.2012 51.672C54.2012 50.34 54.6872 49.332 55.6592 48.648C56.6672 47.928 57.9992 47.568 59.6552 47.568C61.9232 47.568 63.7052 48.198 65.0012 49.458C66.2972 50.682 66.9452 52.266 66.9452 54.21C66.9452 56.514 66.3152 58.602 65.0552 60.474C63.8312 62.346 62.0312 63.858 59.6552 65.01C57.3152 66.162 54.5072 66.846 51.2312 67.062V62.256Z" fill="COLOR"/><path d="M112.398 75.324H94.4165L91.2845 83.64H84.4265L97.9265 48H108.834L122.334 83.64H115.53L112.398 75.324ZM110.4 70.032L104.46 54.48H102.3L96.4145 70.032H110.4Z" fill="COLOR"/></svg>`;
+
+function makeMono(color) {
+  const svg  = MONO_SVG.replace(/COLOR/g, color);
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const img  = new Image();
+  img.src    = URL.createObjectURL(blob);
+  return img;
+}
+
+const monoWhite = makeMono('white'); // dark mode
+const monoBlack = makeMono('black'); // light mode
+// Both load synchronously from blob URLs in modern browsers;
+// trigger a re-render once they're ready just in case.
+monoWhite.onload = monoBlack.onload = scheduleRender;
 
 // ============================================================
-//  FONT & MONOGRAM
+//  ELEMENTS & FONT
 // ============================================================
+const preview = document.getElementById('preview');
+const pCtx    = preview.getContext('2d');
+const videoEl = document.getElementById('video-el');
+
 const fontFace = new FontFace('Monotalic', 'url(Sources/Monotalic-WideMedium.ttf)');
 fontFace.load().then(f => { document.fonts.add(f); scheduleRender(); });
-
-// Monogram: black SVG for light mode, white SVG for dark mode
-const monoImg    = new Image(); // black (light mode)
-const monoImgInv = new Image(); // white (dark mode)
-let monoImgInvReady = false;
-
-fetch('Sources/Monogram.svg')
-  .then(r => r.text())
-  .then(svg => {
-    const blob    = new Blob([svg], { type: 'image/svg+xml' });
-    const blobInv = new Blob([svg.replace(/fill="black"/g, 'fill="white"')], { type: 'image/svg+xml' });
-    monoImg.onload    = scheduleRender;
-    monoImgInv.onload = () => { monoImgInvReady = true; scheduleRender(); };
-    monoImg.src    = URL.createObjectURL(blob);
-    monoImgInv.src = URL.createObjectURL(blobInv);
-  });
 
 // ============================================================
 //  INPUTS
@@ -338,11 +336,13 @@ document.getElementById('video-input').addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
   document.getElementById('video-name').textContent = file.name;
+  videoEl.loop = true;
+  videoEl.muted = true;
   videoEl.src = URL.createObjectURL(file);
   videoEl.load();
   S.videoLoaded = true;
-  videoEl.addEventListener('loadeddata', () => {
-    videoEl.play();
+  videoEl.addEventListener('canplay', () => {
+    videoEl.play().catch(() => {});
     startRenderLoop();
   }, { once: true });
 });
@@ -361,7 +361,7 @@ let rafPending = false;
 function scheduleRender() {
   if (!rafPending) {
     rafPending = true;
-    requestAnimationFrame(() => { rafPending = false; drawStory(pCtx, W, H); });
+    requestAnimationFrame(() => { rafPending = false; drawStory(pCtx, W); });
   }
 }
 
@@ -369,132 +369,124 @@ let loopRaf = null;
 function startRenderLoop() {
   if (loopRaf) cancelAnimationFrame(loopRaf);
   function loop() {
-    drawStory(pCtx, W, H);
+    drawStory(pCtx, W);
     loopRaf = requestAnimationFrame(loop);
   }
   loop();
 }
 
 // ============================================================
-//  CORE DRAW  (draws at 1080×1920 into ctx, scaled via CSS)
+//  CORE DRAW
+//  Width is always W (1080). Height is calculated dynamically —
+//  grows if notes content is taller than the standard top section.
 // ============================================================
-function drawStory(ctx, cW, cH) {
-  const dark   = S.mode === 'dark';
-  const BG     = dark ? '#000' : '#fff';
-  const FG     = dark ? '#fff' : '#000';
-  const FG30   = dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)';
-  const FG15   = dark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)';
+function drawStory(ctx, cW) {
+  const dark = S.mode === 'dark';
+  const BG   = dark ? '#000' : '#fff';
+  const FG   = dark ? '#fff' : '#000';
+  const FG30 = dark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)';
 
-  // canvas is rendered at W×H and displayed smaller via CSS width/height
+  // — Font must be set before measureText (measurement pass)
+  ctx.font = `${FS}px Monotalic`;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = LS;
+
+  // — Video geometry
+  const vAR = (S.videoLoaded && videoEl.videoWidth)
+              ? videoEl.videoHeight / videoEl.videoWidth : 9 / 16;
+  const vidW = cW - PAD * 2;
+  const vidH = vidW * vAR;
+  const symH = (1920 - vidH) / 2;   // standard symmetric top = bottom
+
+  // — Notes wrap (measurement pass, before canvas resize)
+  const notesLines = S.notes
+    ? wrapText(ctx, S.notes.toUpperCase(), cW - PAD * 8)
+    : ['—'];
+
+  // — Text block height
+  const blockH = LH                         // (no.)
+    + G24 + LH                              // horse name
+    + G12 + LH                              // lineage
+    + G12 + LH                              // height / place
+    + G60 + LH                              // (notes) label
+    + G12 + LH * notesLines.length;         // notes lines
+
+  // — Top section: grows if content is taller than standard
+  const topH = Math.max(symH, blockH + CONTENT_PAD * 2);
+  const botH = symH;                         // bottom always stays symmetric
+  const cH   = topH + vidH + botH;
+  const vidY = topH;
+
+  // — Set canvas size (clears state)
   ctx.canvas.width  = cW;
   ctx.canvas.height = cH;
+
+  // — Re-apply font after resize
+  ctx.font = `${FS}px Monotalic`;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = LS;
+  ctx.textBaseline = 'alphabetic';
 
   // — Background
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, cW, cH);
 
-  // — Video geometry
-  const vAR  = (S.videoLoaded && videoEl.videoWidth)
-               ? videoEl.videoHeight / videoEl.videoWidth
-               : 9 / 16;
-  const vidX = PAD;
-  const vidW = cW - PAD * 2;
-  const vidH = vidW * vAR;
-  const vidY = (cH - vidH) / 2;
-  const topH = vidY;          // height available above video
-  const botH = cH - vidY - vidH; // height available below video
-
-  // — Setup font
-  ctx.font = `${FS}px Monotalic`;
-  if ('letterSpacing' in ctx) ctx.letterSpacing = LS;
-  ctx.fillStyle = FG;
-  ctx.textBaseline = 'alphabetic';
-
   // —— TOP SECTION ——————————————————————————————————————————
-  // Calculate total text block height to centre it
-  const notesLines = S.notes
-    ? wrapText(ctx, S.notes.toUpperCase(), cW - PAD * 8)
-    : ['—'];
-  const blockH =
-      LH               // (no.)
-    + G24 + LH         // horse name
-    + G12 + LH         // line1 / line2
-    + G12 + LH         // height / place
-    + G60 + LH         // (notes) label
-    + G12 + LH * notesLines.length;
-
   let y = topH / 2 - blockH / 2 + LH;
 
   // (No.)
   ctx.textAlign = 'center';
-  const noStr = S.number
-    ? '(' + String(S.number).padStart(2, '0') + ')'
-    : '(00)';
+  const noStr = S.number ? '(' + String(S.number).padStart(2, '0') + ')' : '(00)';
   ctx.fillStyle = S.number ? FG : FG30;
   fillTextLS(ctx, noStr, cW / 2, y);
-
   y += G24 + LH;
 
   // Horse name
   const horseName = (S.name || 'Horse Name').toUpperCase();
   ctx.fillStyle = S.name ? FG : FG30;
   fillTextLS(ctx, horseName, cW / 2, y);
-
   y += G12 + LH;
 
-  // Lineage: mother ——— father, row width tracks horse name
+  // Lineage row (mother ——— father)
   const l1 = (S.line1 || 'Mother').toUpperCase();
   const l2 = (S.line2 || 'Father').toUpperCase();
-  const lineageColor = (S.line1 || S.line2) ? FG : FG30;
-  ctx.fillStyle = lineageColor;
-  drawLineageRow(ctx, l1, l2, horseName, cW, y, lineageColor);
-
+  ctx.fillStyle = (S.line1 || S.line2) ? FG : FG30;
+  drawLineageRow(ctx, l1, l2, horseName, cW, y, (S.line1 || S.line2) ? FG : FG30);
   y += G12 + LH;
 
   // Height (left) + Place (right)
-  const htStr = (S.height || '—').toUpperCase();
-  const plStr = (S.place  || '—').toUpperCase();
-  const hasHP = S.height || S.place;
-  ctx.fillStyle = hasHP ? FG : FG30;
+  ctx.fillStyle = (S.height || S.place) ? FG : FG30;
   ctx.textAlign = 'left';
-  fillTextLS(ctx, htStr, PAD * 4, y);
+  fillTextLS(ctx, (S.height || '—').toUpperCase(), PAD * 4, y);
   ctx.textAlign = 'right';
-  fillTextLS(ctx, plStr, cW - PAD * 4, y);
-
+  fillTextLS(ctx, (S.place  || '—').toUpperCase(), cW - PAD * 4, y);
   y += G60 + LH;
 
   // (notes) label
   ctx.textAlign = 'center';
   ctx.fillStyle = FG30;
   fillTextLS(ctx, '(Notes)', cW / 2, y);
-
   y += G12 + LH;
 
-  // Notes text
+  // Notes lines
   ctx.fillStyle = S.notes ? FG : FG30;
   notesLines.forEach((line, i) => {
     fillTextLS(ctx, line, cW / 2, y + i * LH);
   });
 
   // —— VIDEO ————————————————————————————————————————————————
-  if (S.videoLoaded && videoEl.readyState >= 2) {
+  if (S.videoLoaded && videoEl.readyState >= 1) {
     ctx.save();
     ctx.beginPath();
-    rrect(ctx, vidX, vidY, vidW, vidH, 12);
+    rrect(ctx, PAD, vidY, vidW, vidH, 12);
     ctx.clip();
-    ctx.drawImage(videoEl, vidX, vidY, vidW, vidH);
+    ctx.drawImage(videoEl, PAD, vidY, vidW, vidH);
     ctx.restore();
   }
 
-  // —— BOTTOM SECTION (monogram) ————————————————————————————
-  const mW = 64, mH = 44;
-  const mX = cW / 2 - mW / 2;
-  const mY = vidY + vidH + botH / 2 - mH / 2;
-
-  if (dark && monoImgInvReady) {
-    ctx.drawImage(monoImgInv, mX, mY, mW, mH);
-  } else if (!dark && monoImg.complete && monoImg.naturalWidth) {
-    ctx.drawImage(monoImg, mX, mY, mW, mH);
+  // —— BOTTOM SECTION — monogram ————————————————————————————
+  const mono = dark ? monoWhite : monoBlack;
+  if (mono.complete && mono.naturalWidth) {
+    const mW = 64, mH = 44;
+    ctx.drawImage(mono, cW / 2 - mW / 2, vidY + vidH + botH / 2 - mH / 2, mW, mH);
   }
 }
 
@@ -502,52 +494,51 @@ function drawStory(ctx, cW, cH) {
 //  HELPERS
 // ============================================================
 
-/** Fill text — uses letterSpacing if available, else manual kern */
 function fillTextLS(ctx, text, x, y) {
   if ('letterSpacing' in ctx) {
     ctx.letterSpacing = LS;
     ctx.fillText(text, x, y);
     return;
   }
-  // manual fallback
-  const spacing = 9.6;
-  const chars  = [...text];
-  const widths = chars.map(c => ctx.measureText(c).width + spacing);
-  const total  = widths.reduce((a, b) => a + b, 0) - spacing;
+  // fallback: manual character spacing
+  const sp = 9.6;
+  const chars = [...text];
+  const widths = chars.map(c => ctx.measureText(c).width + sp);
+  const total  = widths.reduce((a, b) => a + b, 0) - sp;
   const savedAlign = ctx.textAlign;
-  let cx = (ctx.textAlign === 'center')  ? x - total / 2
-         : (ctx.textAlign === 'right')   ? x - total
-         : x;
+  let cx = ctx.textAlign === 'center' ? x - total / 2
+         : ctx.textAlign === 'right'  ? x - total : x;
   ctx.textAlign = 'left';
   chars.forEach((c, i) => { ctx.fillText(c, cx, y); cx += widths[i]; });
   ctx.textAlign = savedAlign;
 }
 
-/** Lineage row: mother ——— father
- *  Total row width matches horse name width above it (centered).
- *  The rule fills exactly the space between the two names. */
+/** Lineage row — total width matches horse name.
+ *  Rule fills the gap between l1 and l2.
+ *  If no room for a rule, a single word-space separates them. */
 function drawLineageRow(ctx, l1, l2, horseName, cW, y, color) {
   if ('letterSpacing' in ctx) ctx.letterSpacing = LS;
 
   const horseW = ctx.measureText(horseName).width;
   const l1W    = ctx.measureText(l1).width;
   const l2W    = ctx.measureText(l2).width;
+  const spaceW = ctx.measureText('\u00A0').width; // non-breaking space
 
-  // Row width = horse name width (or l1+l2 if wider — line just disappears)
-  const rowW   = Math.max(horseW, l1W + l2W);
-  const rowX   = cW / 2 - rowW / 2;
+  // Row width = horse name width, or names + 1 space minimum
+  const minW = l1W + spaceW + l2W;
+  const rowW  = Math.max(horseW, minW);
+  const rowX  = cW / 2 - rowW / 2;
 
   ctx.fillStyle = color;
   ctx.textAlign = 'left';
   fillTextLS(ctx, l1, rowX, y);
-
   ctx.textAlign = 'right';
   fillTextLS(ctx, l2, rowX + rowW, y);
 
-  // Rule fills the gap between l1 and l2
+  // Rule between them (only if there's actual space beyond 1 word-space)
   const rx1 = rowX + l1W;
   const rx2 = rowX + rowW - l2W;
-  if (rx2 > rx1 + 1) {
+  if (rx2 - rx1 > spaceW + 2) {
     ctx.save();
     ctx.strokeStyle = color;
     ctx.lineWidth   = 1;
@@ -561,7 +552,6 @@ function drawLineageRow(ctx, l1, l2, horseName, cW, y, color) {
   ctx.textAlign = 'center';
 }
 
-/** Wrap text to lines that fit within maxWidth */
 function wrapText(ctx, text, maxWidth) {
   if ('letterSpacing' in ctx) ctx.letterSpacing = LS;
   const words = text.split(' ');
@@ -577,7 +567,6 @@ function wrapText(ctx, text, maxWidth) {
   return lines.length ? lines : [''];
 }
 
-/** Rounded rect path */
 function rrect(ctx, x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -607,36 +596,30 @@ async function startExport() {
   exporting = true;
   const statusEl = document.getElementById('export-status');
   const btnEl    = document.getElementById('btn-export');
-  statusEl.textContent   = 'Recording…';
-  btnEl.textContent      = '→ Recording…';
+  statusEl.textContent = 'Recording…';
+  btnEl.textContent    = '→ Recording…';
 
-  // Create full-res export canvas
-  const ec  = document.createElement('canvas');
-  ec.width  = W; ec.height = H;
+  const ec   = document.createElement('canvas');
   const ectx = ec.getContext('2d');
 
-  // Restart video
   if (loopRaf) { cancelAnimationFrame(loopRaf); loopRaf = null; }
   videoEl.pause();
+  videoEl.loop = false;
   videoEl.currentTime = 0;
   await new Promise(res => videoEl.addEventListener('seeked', res, { once: true }));
   videoEl.muted = false;
-  videoEl.play();
+  videoEl.play().catch(() => {});
 
-  // Choose mime type
-  const mimeType = MediaRecorder.isTypeSupported('video/mp4')
-    ? 'video/mp4'
-    : MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-      ? 'video/webm;codecs=vp9'
-      : 'video/webm';
+  const mimeType = MediaRecorder.isTypeSupported('video/mp4')          ? 'video/mp4'
+    : MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9'
+    : 'video/webm';
   const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
 
-  // Capture canvas stream + audio
+  // First render to get final canvas dimensions
+  drawStory(ectx, W);
   const stream = ec.captureStream(30);
   if (videoEl.captureStream) {
     videoEl.captureStream().getAudioTracks().forEach(t => stream.addTrack(t));
-  } else if (videoEl.mozCaptureStream) {
-    videoEl.mozCaptureStream().getAudioTracks().forEach(t => stream.addTrack(t));
   }
 
   const chunks = [];
@@ -646,29 +629,23 @@ async function startExport() {
     const blob = new Blob(chunks, { type: mimeType });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `equipe-danvers-story.${ext}`;
-    a.click();
-    statusEl.textContent   = 'Done ✓';
-    btnEl.textContent      = '→ Export video';
+    a.href = url; a.download = `equipe-danvers-story.${ext}`; a.click();
+    statusEl.textContent = 'Done ✓';
+    btnEl.textContent    = '→ Export video';
     exporting = false;
+    videoEl.loop = true;
     videoEl.muted = true;
-    videoEl.play();
+    videoEl.play().catch(() => {});
     startRenderLoop();
   };
 
-  mr.start(100); // collect data every 100ms
-
-  // Render loop for export canvas
-  function exportLoop() {
-    drawStory(ectx, W, H);
-    if (!videoEl.ended) {
-      requestAnimationFrame(exportLoop);
-    } else {
-      mr.stop();
-    }
-  }
+  mr.start(100);
   videoEl.addEventListener('ended', () => mr.stop(), { once: true });
+  function exportLoop() {
+    drawStory(ectx, W);
+    if (!videoEl.ended) requestAnimationFrame(exportLoop);
+    else mr.stop();
+  }
   exportLoop();
 }
 
