@@ -407,24 +407,50 @@ function drawStory(ctx, cW) {
               ? videoEl.videoHeight / videoEl.videoWidth : 9 / 16;
   const vidW = cW - PAD * 2;
   const vidH = vidW * vAR;
-  const symH = (1920 - vidH) / 2;   // standard symmetric top = bottom
+  const symH = (1920 - vidH) / 2;
 
-  // — Notes wrap (measurement pass, before canvas resize)
-  const notesLines = S.notes
-    ? wrapText(ctx, S.notes.toUpperCase(), cW - PAD * 8)
-    : ['—'];
+  // — Determine visible rows (only show rows with actual data)
+  const hasNumber      = !!S.number;
+  const hasName        = !!S.name;
+  const hasLineage     = !!(S.line1 || S.line2);
+  const hasHeightPlace = !!(S.height || S.place);
+  const hasNotes       = !!S.notes;
 
-  // — Text block height
-  const blockH = LH                         // (no.)
-    + G24 + LH                              // horse name
-    + G12 + LH                              // lineage
-    + G12 + LH                              // height / place
-    + G60 + LH                              // (notes) label
-    + G12 + LH * notesLines.length;         // notes lines
+  // — Name column width (all other rows align to this)
+  const nameW = hasName ? ctx.measureText(S.name.toUpperCase()).width : 0;
+
+  // — Notes wrap at name width (falls back to wide margin if no name)
+  const notesWrapW = nameW > 0 ? nameW : cW - PAD * 8;
+  const notesLines = hasNotes
+    ? wrapText(ctx, S.notes.toUpperCase(), notesWrapW)
+    : [];
+
+  // — Build row list with gaps
+  const rows = [];
+  if (hasNumber)      rows.push({ type: 'number'       });
+  if (hasName)        rows.push({ type: 'name'         });
+  if (hasLineage)     rows.push({ type: 'lineage'      });
+  if (hasHeightPlace) rows.push({ type: 'height_place' });
+  if (hasNotes) {
+    rows.push({ type: 'notes_label' });
+    rows.push({ type: 'notes'       });
+  }
+  for (let i = 0; i < rows.length; i++) {
+    if (i === 0) { rows[i].gap = 0; continue; }
+    // All rows use LH spacing (gap = 0), except the notes section which gets a bigger break
+    rows[i].gap = (rows[i].type === 'notes_label') ? G60 : 0;
+  }
+
+  // — Block height (only from visible rows)
+  let blockH = 0;
+  for (const row of rows) {
+    blockH += row.gap;
+    blockH += (row.type === 'notes') ? LH * notesLines.length : LH;
+  }
 
   // — Top section: grows if content is taller than standard
   const topH = Math.max(symH, blockH + CONTENT_PAD * 2);
-  const botH = symH;                         // bottom always stays symmetric
+  const botH = symH;
   const cH   = topH + vidH + botH;
   const vidY = topH;
 
@@ -441,48 +467,80 @@ function drawStory(ctx, cW) {
   ctx.fillStyle = BG;
   ctx.fillRect(0, 0, cW, cH);
 
-  // —— TOP SECTION ——————————————————————————————————————————
-  let y = topH / 2 - blockH / 2 + LH;
+  // —— TOP TEXT BLOCK ——————————————————————————————————————
+  let y = topH / 2 - blockH / 2;
 
-  // (No.)
-  ctx.textAlign = 'center';
-  const noStr = S.number ? '(' + String(S.number).padStart(2, '0') + ')' : '(00)';
-  ctx.fillStyle = S.number ? FG : FG30;
-  fillTextLS(ctx, noStr, cW / 2, y);
-  y += G24 + LH;
+  for (const row of rows) {
+    y += row.gap;
+    y += LH;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = FG;
 
-  // Horse name
-  const horseName = (S.name || 'Horse Name').toUpperCase();
-  ctx.fillStyle = S.name ? FG : FG30;
-  fillTextLS(ctx, horseName, cW / 2, y);
-  y += G12 + LH;
-
-  // Lineage row (mother ——— father)
-  const l1 = (S.line1 || 'Mother').toUpperCase();
-  const l2 = (S.line2 || 'Father').toUpperCase();
-  ctx.fillStyle = (S.line1 || S.line2) ? FG : FG30;
-  drawLineageRow(ctx, l1, l2, horseName, cW, y, (S.line1 || S.line2) ? FG : FG30);
-  y += G12 + LH;
-
-  // Height (left) + Place (right)
-  ctx.fillStyle = (S.height || S.place) ? FG : FG30;
-  ctx.textAlign = 'left';
-  fillTextLS(ctx, (S.height || '—').toUpperCase(), PAD * 4, y);
-  ctx.textAlign = 'right';
-  fillTextLS(ctx, (S.place  || '—').toUpperCase(), cW - PAD * 4, y);
-  y += G60 + LH;
-
-  // (notes) label
-  ctx.textAlign = 'center';
-  ctx.fillStyle = FG30;
-  fillTextLS(ctx, '(Notes)', cW / 2, y);
-  y += G12 + LH;
-
-  // Notes lines
-  ctx.fillStyle = S.notes ? FG : FG30;
-  notesLines.forEach((line, i) => {
-    fillTextLS(ctx, line, cW / 2, y + i * LH);
-  });
+    switch (row.type) {
+      case 'number': {
+        const noStr = '(' + String(S.number).padStart(2, '0') + ')';
+        fillTextLS(ctx, noStr, cW / 2, y);
+        break;
+      }
+      case 'name': {
+        fillTextLS(ctx, S.name.toUpperCase(), cW / 2, y);
+        break;
+      }
+      case 'lineage': {
+        const l1 = (S.line1 || '').toUpperCase();
+        const l2 = (S.line2 || '').toUpperCase();
+        // Measure actual text bounds for precise line positioning
+        const m       = ctx.measureText('A');
+        const textTop = y - m.actualBoundingBoxAscent;   // top of caps
+        const textBot = y + (m.actualBoundingBoxDescent || 0); // bottom of caps (≈ baseline)
+        const ruleDrawn = drawLineageRow(ctx, l1, l2, hasName ? S.name.toUpperCase() : '', cW, y, FG, textBot);
+        // Vertical center line only when a horizontal rule was actually drawn
+        if (ruleDrawn) {
+          ctx.save();
+          ctx.strokeStyle = FG;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(cW / 2, textBot); // flush with bottom of text
+          ctx.lineTo(cW / 2, textTop); // flush with top of text
+          ctx.stroke();
+          ctx.restore();
+        }
+        break;
+      }
+      case 'height_place': {
+        const spaceW = ctx.measureText('\u00A0').width;
+        const heightStr = S.height ? S.height.toUpperCase() : '';
+        const placeStr  = S.place  ? S.place.toUpperCase()  : '';
+        const heightW = heightStr ? ctx.measureText(heightStr).width : 0;
+        const placeW  = placeStr  ? ctx.measureText(placeStr).width  : 0;
+        const minW = heightW + (heightW && placeW ? spaceW * 2 : 0) + placeW;
+        const rowW = Math.max(nameW, minW);
+        const rowX = cW / 2 - rowW / 2;
+        if (heightStr) {
+          ctx.textAlign = 'left';
+          fillTextLS(ctx, heightStr, rowX, y);
+        }
+        if (placeStr) {
+          ctx.textAlign = 'right';
+          fillTextLS(ctx, placeStr, rowX + rowW, y);
+        }
+        ctx.textAlign = 'center';
+        break;
+      }
+      case 'notes_label': {
+        ctx.fillStyle = FG;
+        fillTextLS(ctx, '(NOTES)', cW / 2, y);
+        break;
+      }
+      case 'notes': {
+        notesLines.forEach((line, i) => {
+          fillTextLS(ctx, line, cW / 2, y + i * LH);
+        });
+        if (notesLines.length > 1) y += LH * (notesLines.length - 1);
+        break;
+      }
+    }
+  }
 
   // —— VIDEO ————————————————————————————————————————————————
   if (S.videoLoaded && videoEl.readyState >= 1) {
@@ -497,9 +555,8 @@ function drawStory(ctx, cW) {
   // —— BOTTOM SECTION — monogram ————————————————————————————
   const mono = dark ? monoWhite : monoBlack;
   if (mono.complete && mono.naturalWidth) {
-    // Original SVG: 143×84. Scale to 64px wide, keep ratio.
     const mW = 64;
-    const mH = mW * (84 / 143); // ~37.5px
+    const mH = mW * (84 / 143);
     ctx.drawImage(mono, cW / 2 - mW / 2, vidY + vidH + botH / 2 - mH / 2, mW, mH);
   }
 }
@@ -528,42 +585,55 @@ function fillTextLS(ctx, text, x, y) {
 }
 
 /** Lineage row — total width matches horse name.
- *  Rule fills the gap between l1 and l2.
- *  If no room for a rule, a single word-space separates them. */
-function drawLineageRow(ctx, l1, l2, horseName, cW, y, color) {
+ *  A word-space gap sits on each side of the rule.
+ *  Returns true if a horizontal rule was drawn, false otherwise. */
+function drawLineageRow(ctx, l1, l2, horseName, cW, y, color, ruleY) {
   if ('letterSpacing' in ctx) ctx.letterSpacing = LS;
+
+  ctx.fillStyle = color;
+
+  // If only one side is filled, just center it — no rule
+  if (!l1 || !l2) {
+    ctx.textAlign = 'center';
+    fillTextLS(ctx, l1 || l2, cW / 2, y);
+    ctx.textAlign = 'center';
+    return false;
+  }
 
   const horseW = ctx.measureText(horseName).width;
   const l1W    = ctx.measureText(l1).width;
   const l2W    = ctx.measureText(l2).width;
-  const spaceW = ctx.measureText('\u00A0').width; // non-breaking space
+  const spaceW = ctx.measureText('\u00A0').width;
 
-  // Row width = horse name width, or names + 1 space minimum
-  const minW = l1W + spaceW + l2W;
-  const rowW  = Math.max(horseW, minW);
-  const rowX  = cW / 2 - rowW / 2;
+  // Row width = horse name width, or names + 2 spaces minimum
+  const minW = l1W + spaceW * 2 + l2W;
+  const rowW = Math.max(horseW, minW);
+  const rowX = cW / 2 - rowW / 2;
 
-  ctx.fillStyle = color;
   ctx.textAlign = 'left';
   fillTextLS(ctx, l1, rowX, y);
   ctx.textAlign = 'right';
   fillTextLS(ctx, l2, rowX + rowW, y);
 
-  // Rule between them (only if there's actual space beyond 1 word-space)
-  const rx1 = rowX + l1W;
-  const rx2 = rowX + rowW - l2W;
-  if (rx2 - rx1 > spaceW + 2) {
+  // Rule with a word-space gap on each side
+  const rx1 = rowX + l1W + spaceW;
+  const rx2 = rowX + rowW - l2W - spaceW;
+  const lineRuleY = ruleY !== undefined ? ruleY : y + (ctx.measureText('A').actualBoundingBoxDescent || 0);
+  let ruleDrawn = false;
+  if (rx2 - rx1 > 0) {
     ctx.save();
     ctx.strokeStyle = color;
-    ctx.lineWidth   = 1;
+    ctx.lineWidth   = 2;
     ctx.beginPath();
-    ctx.moveTo(rx1, y - LH * 0.28);
-    ctx.lineTo(rx2, y - LH * 0.28);
+    ctx.moveTo(rx1, lineRuleY);
+    ctx.lineTo(rx2, lineRuleY);
     ctx.stroke();
     ctx.restore();
+    ruleDrawn = true;
   }
 
   ctx.textAlign = 'center';
+  return ruleDrawn;
 }
 
 function wrapText(ctx, text, maxWidth) {
@@ -610,7 +680,7 @@ async function startExport() {
   exporting = true;
   const statusEl = document.getElementById('export-status');
   const btnEl    = document.getElementById('btn-export');
-  statusEl.textContent = 'Recording…';
+  statusEl.textContent = 'Preparing…';
   btnEl.textContent    = '→ Recording…';
 
   const ec   = document.createElement('canvas');
@@ -622,14 +692,16 @@ async function startExport() {
   videoEl.currentTime = 0;
   await new Promise(res => videoEl.addEventListener('seeked', res, { once: true }));
   videoEl.muted = false;
-  videoEl.play().catch(() => {});
+  await videoEl.play().catch(() => {});
+
+  const duration = videoEl.duration || 0;
 
   const mimeType = MediaRecorder.isTypeSupported('video/mp4')          ? 'video/mp4'
     : MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9'
     : 'video/webm';
   const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
 
-  // First render to get final canvas dimensions
+  // First render to set export canvas dimensions
   drawStory(ectx, W);
   const stream = ec.captureStream(30);
   if (videoEl.captureStream) {
@@ -640,6 +712,7 @@ async function startExport() {
   const mr = new MediaRecorder(stream, { mimeType });
   mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
   mr.onstop = () => {
+    clearTimeout(safetyTimer);
     const blob = new Blob(chunks, { type: mimeType });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
@@ -653,12 +726,27 @@ async function startExport() {
     startRenderLoop();
   };
 
+  // Guard against mr.stop() being called more than once
+  let stopped = false;
+  function stopOnce() {
+    if (stopped) return;
+    stopped = true;
+    mr.stop();
+  }
+
+  // Safety fallback in case 'ended' never fires
+  const safetyTimer = setTimeout(stopOnce, (duration + 5) * 1000);
+
   mr.start(100);
-  videoEl.addEventListener('ended', () => mr.stop(), { once: true });
+  videoEl.addEventListener('ended', stopOnce, { once: true });
+
   function exportLoop() {
     drawStory(ectx, W);
-    if (!videoEl.ended) requestAnimationFrame(exportLoop);
-    else mr.stop();
+    if (duration > 0) {
+      const pct = Math.min(100, Math.round(videoEl.currentTime / duration * 100));
+      statusEl.textContent = `Recording… ${pct}%`;
+    }
+    if (!stopped) requestAnimationFrame(exportLoop);
   }
   exportLoop();
 }
