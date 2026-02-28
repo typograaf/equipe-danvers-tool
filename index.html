@@ -12,32 +12,23 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-:root {
-  --f: 'Monotalic', monospace;
-  --fs: 24px;
-  --lh: 1.18;
-  --ls: 9.6px;
-  --b: 12px;
-}
-
 body {
   background: #000;
   color: #fff;
-  font-family: var(--f);
-  font-size: var(--fs);
-  line-height: var(--lh);
-  letter-spacing: var(--ls);
+  font-family: 'Monotalic', monospace;
+  font-size: 24px;
+  line-height: 1.18;
+  letter-spacing: 9.6px;
   text-transform: uppercase;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  height: 100vh;
   overflow: hidden;
+  display: flex;
 }
 
 .wrap {
   display: flex;
-  flex: 1;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   padding: 10px;
   gap: 10px;
 }
@@ -59,108 +50,102 @@ body {
   gap: 60px;
 }
 
-.tool-title p { display: block; }
-
+/* section = label + fields, spaced by line-height only */
 .section {
   display: flex;
   flex-direction: column;
-  gap: var(--b);
+  gap: 0;
 }
 
 .section-label {
   opacity: 0.3;
   display: block;
+  margin-bottom: 12px;
 }
 
-.field-row {
+/* each field is label + input on one line */
+.field {
   display: flex;
   align-items: baseline;
-  gap: var(--b);
 }
 
-.field-label {
-  white-space: nowrap;
+.field + .field {
+  margin-top: 0; /* lines sit at natural line-height */
+}
+
+.lbl {
   flex-shrink: 0;
-  min-width: 96px;
+  white-space: nowrap;
+  margin-right: 0.4ch;
 }
 
 input[type="text"],
 textarea {
+  flex: 1;
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(255,255,255,0.2);
-  color: #fff;
-  font-family: var(--f);
-  font-size: var(--fs);
-  line-height: var(--lh);
-  letter-spacing: var(--ls);
-  text-transform: uppercase;
   outline: none;
-  width: 100%;
-  padding: 2px 0;
+  color: #fff;
+  font-family: 'Monotalic', monospace;
+  font-size: 24px;
+  line-height: 1.18;
+  letter-spacing: 9.6px;
+  text-transform: uppercase;
+  padding: 0;
+  margin: 0;
+  caret-color: #fff;
   resize: none;
-}
-
-input::placeholder, textarea::placeholder {
-  opacity: 0.25;
-}
-
-textarea {
-  min-height: calc(var(--fs) * var(--lh));
   overflow: hidden;
+  display: block;
+  width: 100%;
+  min-width: 0;
 }
+
+textarea { min-height: calc(24px * 1.18); }
+
+input::placeholder,
+textarea::placeholder { opacity: 0.25; }
 
 /* Mode toggle */
 .toggle-row {
   display: flex;
-  gap: var(--b);
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .toggle-btn {
   height: 34px;
-  flex: 1;
-  max-width: 237px;
+  width: 237px;
   border-radius: 67px;
   border: 1px solid #fff;
   background: transparent;
   color: #fff;
-  font-family: var(--f);
-  font-size: 16px;
-  letter-spacing: var(--ls);
+  font-family: 'Monotalic', monospace;
+  font-size: 24px;
+  letter-spacing: 9.6px;
   text-transform: uppercase;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
-}
-
-.toggle-btn.active {
-  background: #fff;
-  color: #000;
-}
-
-/* Action buttons */
-.action-btn {
-  background: none;
-  border: none;
-  color: #fff;
-  font-family: var(--f);
-  font-size: var(--fs);
-  line-height: var(--lh);
-  letter-spacing: var(--ls);
-  text-transform: uppercase;
-  cursor: pointer;
   padding: 0;
-  text-align: left;
-  display: block;
+  line-height: 1;
 }
 
-.action-btn:hover { opacity: 0.6; }
+.toggle-btn.active { background: #fff; color: #000; }
 
-.status-text {
-  opacity: 0.35;
-  font-size: 16px;
-  letter-spacing: 4px;
-  min-height: 1.18em;
+/* action links */
+.action {
+  cursor: pointer;
   display: block;
+  margin-top: 12px;
+}
+.action:hover { opacity: 0.6; }
+
+.status {
+  opacity: 0.3;
+  font-size: 24px;
+  letter-spacing: 9.6px;
+  display: block;
+  min-height: calc(24px * 1.18);
 }
 
 /* Footer */
@@ -170,12 +155,6 @@ textarea {
   justify-content: space-between;
   padding-top: 48px;
   flex-shrink: 0;
-}
-
-.form-footer p {
-  font-size: 16px;
-  letter-spacing: 4px;
-  line-height: 1.5;
 }
 
 .monogram-footer {
@@ -189,20 +168,19 @@ textarea {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
 }
 
 .preview-wrap {
   border: 2px solid rgba(255,255,255,0.4);
   border-radius: 7px;
   overflow: hidden;
-  flex-shrink: 0;
 }
 
 #preview {
   display: block;
-  width: 405px;
-  height: 720px;
+  /* rendered at 1080×1920, displayed via CSS */
+  height: calc(100vh - 20px);
+  width: auto;
 }
 
 /* ——— SPACER ——— */
@@ -216,7 +194,7 @@ textarea {
   <div class="form-panel">
     <div class="form-inner">
 
-      <div class="tool-title">
+      <div>
         <p>Equipe d'Anvers</p>
         <p>(IG) Story Builder</p>
       </div>
@@ -224,41 +202,23 @@ textarea {
       <!-- Identity -->
       <div class="section">
         <span class="section-label">Identity</span>
-        <div class="field-row">
-          <span class="field-label">Name:</span>
-          <input type="text" id="f-name" placeholder="Horse name" autocomplete="off">
-        </div>
-        <div class="field-row">
-          <span class="field-label">Line 1:</span>
-          <input type="text" id="f-line1" placeholder="e.g. Rider" autocomplete="off">
-        </div>
-        <div class="field-row">
-          <span class="field-label">Line 2:</span>
-          <input type="text" id="f-line2" placeholder="e.g. Owner" autocomplete="off">
-        </div>
+        <div class="field"><span class="lbl">Name:</span><input type="text" id="f-name" placeholder="Horse name" autocomplete="off"></div>
+        <div class="field"><span class="lbl">Line 1:</span><input type="text" id="f-line1" placeholder="Rider" autocomplete="off"></div>
+        <div class="field"><span class="lbl">Line 2:</span><input type="text" id="f-line2" placeholder="Owner" autocomplete="off"></div>
       </div>
 
       <!-- Competition -->
       <div class="section">
         <span class="section-label">Competition</span>
-        <div class="field-row">
-          <span class="field-label">No.:</span>
-          <input type="text" id="f-number" placeholder="02" autocomplete="off" style="max-width:96px;">
-        </div>
-        <div class="field-row">
-          <span class="field-label">Place:</span>
-          <input type="text" id="f-place" placeholder="Peelbergen" autocomplete="off">
-        </div>
-        <div class="field-row">
-          <span class="field-label">Height:</span>
-          <input type="text" id="f-height" placeholder="1.20" autocomplete="off" style="max-width:96px;">
-        </div>
+        <div class="field"><span class="lbl">No.:</span><input type="text" id="f-number" placeholder="02" autocomplete="off"></div>
+        <div class="field"><span class="lbl">Place:</span><input type="text" id="f-place" placeholder="Peelbergen" autocomplete="off"></div>
+        <div class="field"><span class="lbl">Height:</span><input type="text" id="f-height" placeholder="1.20" autocomplete="off"></div>
       </div>
 
       <!-- Notes -->
       <div class="section">
         <span class="section-label">Notes</span>
-        <textarea id="f-notes" rows="2" placeholder="Extra information..."></textarea>
+        <textarea id="f-notes" placeholder="Extra information..."></textarea>
       </div>
 
       <!-- Mode -->
@@ -273,16 +233,16 @@ textarea {
       <!-- Source -->
       <div class="section">
         <span class="section-label">Source</span>
-        <button class="action-btn" onclick="document.getElementById('video-input').click()">→ Upload video</button>
+        <span class="action" onclick="document.getElementById('video-input').click()">→ Upload video</span>
         <input type="file" id="video-input" accept="video/*" style="display:none">
-        <span class="status-text" id="video-name"></span>
+        <span class="status" id="video-name"></span>
       </div>
 
       <!-- Export -->
       <div class="section">
         <span class="section-label">Export</span>
-        <button class="action-btn" id="btn-export" onclick="startExport()">→ Export video</button>
-        <span class="status-text" id="export-status"></span>
+        <span class="action" id="btn-export" onclick="startExport()">→ Export video</span>
+        <span class="status" id="export-status"></span>
       </div>
 
     </div>
@@ -290,8 +250,8 @@ textarea {
     <!-- Footer -->
     <div class="form-footer">
       <img src="Sources/Monogram.svg" class="monogram-footer" alt="E D'A">
-      <p style="text-align:center;">A Graphic Tool<br>by Typograaf</p>
-      <p style="text-align:right;">Version 01<br>2026/02/28</p>
+      <p>A Graphic Tool<br>by Typograaf</p>
+      <p>Version 01<br>2026/02/28</p>
     </div>
   </div>
 
@@ -669,8 +629,8 @@ async function startExport() {
   exporting = true;
   const statusEl = document.getElementById('export-status');
   const btnEl    = document.getElementById('btn-export');
-  statusEl.textContent = 'Recording…';
-  btnEl.textContent    = '→ Recording…';
+  statusEl.textContent   = 'Recording…';
+  btnEl.textContent      = '→ Recording…';
 
   // Create full-res export canvas
   const ec  = document.createElement('canvas');
@@ -711,8 +671,8 @@ async function startExport() {
     a.href     = url;
     a.download = `equipe-danvers-story.${ext}`;
     a.click();
-    statusEl.textContent = 'Done ✓';
-    btnEl.textContent    = '→ Export video';
+    statusEl.textContent   = 'Done ✓';
+    btnEl.textContent      = '→ Export video';
     exporting = false;
     videoEl.muted = true;
     videoEl.play();
