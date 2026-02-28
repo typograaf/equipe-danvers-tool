@@ -704,20 +704,28 @@ async function startExport() {
 
   const duration = videoEl.duration || 0;
 
-  const mimeType = MediaRecorder.isTypeSupported('video/mp4')          ? 'video/mp4'
-    : MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9'
+  const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')  ? 'video/mp4;codecs=avc1'
+    : MediaRecorder.isTypeSupported('video/mp4')                           ? 'video/mp4'
+    : MediaRecorder.isTypeSupported('video/webm;codecs=vp9')               ? 'video/webm;codecs=vp9'
     : 'video/webm';
   const ext = mimeType.startsWith('video/mp4') ? 'mp4' : 'webm';
 
-  // First render to set export canvas dimensions
+  // Initial render to set export canvas size
   drawStory(ectx, W);
-  const stream = ec.captureStream(30);
+
+  // Capture canvas stream + audio from the video element
+  const fps    = 30;
+  const stream = ec.captureStream(fps);
   if (videoEl.captureStream) {
     videoEl.captureStream().getAudioTracks().forEach(t => stream.addTrack(t));
   }
 
   const chunks = [];
-  const mr = new MediaRecorder(stream, { mimeType });
+  const mr = new MediaRecorder(stream, {
+    mimeType,
+    videoBitsPerSecond: 10_000_000,  // 10 Mbps — avoids compression artefacts
+    audioBitsPerSecond:    192_000,
+  });
   mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
   mr.onstop = () => {
     clearTimeout(safetyTimer);
@@ -748,15 +756,19 @@ async function startExport() {
   mr.start(100);
   videoEl.addEventListener('ended', stopOnce, { once: true });
 
-  function exportLoop() {
+  // requestVideoFrameCallback fires only when the video decoder
+  // has a new frame — syncs canvas renders to the actual video
+  // framerate instead of running at 60fps, eliminating dropped frames.
+  function onVideoFrame() {
+    if (stopped) return;
     drawStory(ectx, W);
     if (duration > 0) {
       const pct = Math.min(100, Math.round(videoEl.currentTime / duration * 100));
-      statusEl.textContent = `Recording… ${pct}%`;
+      statusEl.textContent = `Exporting… ${pct}%`;
     }
-    if (!stopped) requestAnimationFrame(exportLoop);
+    videoEl.requestVideoFrameCallback(onVideoFrame);
   }
-  exportLoop();
+  videoEl.requestVideoFrameCallback(onVideoFrame);
 }
 
 // ============================================================
