@@ -455,9 +455,10 @@ function drawStory(ctx, cW) {
   }
 
   // — Top section: grows if content is taller than standard
-  const topH = Math.max(symH, blockH + CONTENT_PAD * 2);
-  const botH = symH;
-  const cH   = topH + vidH + botH;
+  // Round to even integers — H.264 encoding requires even dimensions
+  const topH = Math.ceil(Math.max(symH, blockH + CONTENT_PAD * 2) / 2) * 2;
+  const botH = Math.ceil(symH / 2) * 2;
+  const cH   = Math.ceil((topH + vidH + botH) / 2) * 2;
   const vidY = topH;
 
   // — Set canvas size (clears state)
@@ -786,6 +787,7 @@ async function startExport() {
     try {
       await videoEncoder.flush(); videoEncoder.close();
       if (audioEncoder) { await audioEncoder.flush(); audioEncoder.close(); }
+      if (frameCount === 0) throw new Error('No frames were encoded — encoder may have rejected the configuration');
       muxer.finalize();
       const blob = new Blob([target.buffer], { type: 'video/mp4' });
       const url  = URL.createObjectURL(blob);
@@ -795,7 +797,7 @@ async function startExport() {
       statusEl.textContent = 'Done ✓';
     } catch (err) {
       console.error(err);
-      statusEl.textContent = 'Export failed — see console';
+      statusEl.textContent = `Failed: ${err.message}`;
     }
     btnEl.textContent = '→ Export video';
     exporting = false;
