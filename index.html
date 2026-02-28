@@ -365,7 +365,7 @@ function renderPreview() {
   // never larger than the actual export (1:1 scale).
   const cH     = pCtx.canvas.height;
   const availH = window.innerHeight - 20 - 48; // 20px wrap, 24px top+24px bottom
-  const scale  = Math.min(1, availH / cH);
+  const scale  = Math.min(0.5, availH / cH);   // max 50% = 540×960
   preview.style.width = Math.round(W * scale) + 'px';
 }
 
