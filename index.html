@@ -16,9 +16,9 @@ body {
   background: #000;
   color: #fff;
   font-family: 'Monotalic', monospace;
-  font-size: 24px;
+  font-size: 12px;
   line-height: 1.18;
-  letter-spacing: 9.6px;
+  letter-spacing: 4.8px;
   text-transform: uppercase;
   height: 100vh;
   overflow: hidden;
@@ -39,7 +39,7 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 48px;
+  padding: 24px;
   overflow-y: auto;
   min-width: 0;
 }
@@ -47,7 +47,7 @@ body {
 .form-inner {
   display: flex;
   flex-direction: column;
-  gap: 60px;
+  gap: 30px;
 }
 
 /* section = label + fields, spaced by line-height only */
@@ -60,7 +60,7 @@ body {
 .section-label {
   opacity: 0.3;
   display: block;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 
 /* each field is label + input on one line */
@@ -87,9 +87,9 @@ textarea {
   outline: none;
   color: #fff;
   font-family: 'Monotalic', monospace;
-  font-size: 24px;
+  font-size: 12px;
   line-height: 1.18;
-  letter-spacing: 9.6px;
+  letter-spacing: 4.8px;
   text-transform: uppercase;
   padding: 0;
   margin: 0;
@@ -101,7 +101,7 @@ textarea {
   min-width: 0;
 }
 
-textarea { min-height: calc(24px * 1.18); }
+textarea { min-height: calc(12px * 1.18); }
 
 input::placeholder,
 textarea::placeholder { opacity: 0.25; }
@@ -109,20 +109,20 @@ textarea::placeholder { opacity: 0.25; }
 /* Mode toggle */
 .toggle-row {
   display: flex;
-  gap: 12px;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .toggle-btn {
-  height: 34px;
-  width: 237px;
-  border-radius: 67px;
+  height: 20px;
+  width: 120px;
+  border-radius: 34px;
   border: 1px solid #fff;
   background: transparent;
   color: #fff;
   font-family: 'Monotalic', monospace;
-  font-size: 24px;
-  letter-spacing: 9.6px;
+  font-size: 12px;
+  letter-spacing: 4.8px;
   text-transform: uppercase;
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
@@ -136,16 +136,16 @@ textarea::placeholder { opacity: 0.25; }
 .action {
   cursor: pointer;
   display: block;
-  margin-top: 12px;
+  margin-top: 6px;
 }
 .action:hover { opacity: 0.6; }
 
 .status {
   opacity: 0.3;
-  font-size: 24px;
-  letter-spacing: 9.6px;
+  font-size: 12px;
+  letter-spacing: 4.8px;
   display: block;
-  min-height: calc(24px * 1.18);
+  min-height: calc(12px * 1.18);
 }
 
 /* Footer */
@@ -153,12 +153,12 @@ textarea::placeholder { opacity: 0.25; }
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  padding-top: 48px;
+  padding-top: 24px;
   flex-shrink: 0;
 }
 
 .monogram-footer {
-  height: 44px;
+  height: 22px;
   filter: invert(1);
   flex-shrink: 0;
 }
