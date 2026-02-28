@@ -155,6 +155,7 @@ textarea::placeholder { opacity: 0.25; }
 
 .monogram-footer {
   height: 18px;
+  width: auto; /* preserve 143:84 ratio */
   filter: invert(1);
   flex-shrink: 0;
 }
@@ -496,7 +497,9 @@ function drawStory(ctx, cW) {
   // —— BOTTOM SECTION — monogram ————————————————————————————
   const mono = dark ? monoWhite : monoBlack;
   if (mono.complete && mono.naturalWidth) {
-    const mW = 64, mH = 44;
+    // Original SVG: 143×84. Scale to 64px wide, keep ratio.
+    const mW = 64;
+    const mH = mW * (84 / 143); // ~37.5px
     ctx.drawImage(mono, cW / 2 - mW / 2, vidY + vidH + botH / 2 - mH / 2, mW, mH);
   }
 }
