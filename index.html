@@ -16,9 +16,9 @@ body {
   background: #000;
   color: #fff;
   font-family: 'Monotalic', monospace;
-  font-size: 12px;
+  font-size: 10px;
   line-height: 1.18;
-  letter-spacing: 4.8px;
+  letter-spacing: 4px;
   text-transform: uppercase;
   height: 100vh;
   overflow: hidden;
@@ -47,7 +47,7 @@ body {
 .form-inner {
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 24px;
 }
 
 /* section = label + fields, spaced by line-height only */
@@ -60,7 +60,7 @@ body {
 .section-label {
   opacity: 0.3;
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 /* each field is label + input on one line */
@@ -87,9 +87,9 @@ textarea {
   outline: none;
   color: #fff;
   font-family: 'Monotalic', monospace;
-  font-size: 12px;
+  font-size: 10px;
   line-height: 1.18;
-  letter-spacing: 4.8px;
+  letter-spacing: 4px;
   text-transform: uppercase;
   padding: 0;
   margin: 0;
@@ -101,7 +101,7 @@ textarea {
   min-width: 0;
 }
 
-textarea { min-height: calc(12px * 1.18); }
+textarea { min-height: calc(10px * 1.18); }
 
 input::placeholder,
 textarea::placeholder { opacity: 0.25; }
@@ -110,42 +110,38 @@ textarea::placeholder { opacity: 0.25; }
 .toggle-row {
   display: flex;
   gap: 6px;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .toggle-btn {
-  height: 20px;
-  width: 120px;
-  border-radius: 34px;
+  height: 16px;
+  width: 96px;
+  border-radius: 999px;
   border: 1px solid #fff;
   background: transparent;
-  color: #fff;
-  font-family: 'Monotalic', monospace;
-  font-size: 12px;
-  letter-spacing: 4.8px;
-  text-transform: uppercase;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s;
   padding: 0;
-  line-height: 1;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
-.toggle-btn.active { background: #fff; color: #000; }
+.toggle-btn.active { background: #fff; }
 
 /* action links */
 .action {
   cursor: pointer;
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 .action:hover { opacity: 0.6; }
 
 .status {
   opacity: 0.3;
-  font-size: 12px;
-  letter-spacing: 4.8px;
+  font-size: 10px;
+  letter-spacing: 4px;
   display: block;
-  min-height: calc(12px * 1.18);
+  min-height: calc(10px * 1.18);
 }
 
 /* Footer */
@@ -158,7 +154,7 @@ textarea::placeholder { opacity: 0.25; }
 }
 
 .monogram-footer {
-  height: 22px;
+  height: 18px;
   filter: invert(1);
   flex-shrink: 0;
 }
@@ -203,15 +199,15 @@ textarea::placeholder { opacity: 0.25; }
       <!-- Identity -->
       <div class="section">
         <span class="section-label">Identity</span>
+        <div class="field"><span class="lbl">No.:</span><input type="text" id="f-number" placeholder="02" autocomplete="off"></div>
         <div class="field"><span class="lbl">Name:</span><input type="text" id="f-name" placeholder="Horse name" autocomplete="off"></div>
-        <div class="field"><span class="lbl">Line 1:</span><input type="text" id="f-line1" placeholder="Rider" autocomplete="off"></div>
-        <div class="field"><span class="lbl">Line 2:</span><input type="text" id="f-line2" placeholder="Owner" autocomplete="off"></div>
+        <div class="field"><span class="lbl">Line 1:</span><input type="text" id="f-line1" placeholder="Mother" autocomplete="off"></div>
+        <div class="field"><span class="lbl">Line 2:</span><input type="text" id="f-line2" placeholder="Father" autocomplete="off"></div>
       </div>
 
       <!-- Competition -->
       <div class="section">
         <span class="section-label">Competition</span>
-        <div class="field"><span class="lbl">No.:</span><input type="text" id="f-number" placeholder="02" autocomplete="off"></div>
         <div class="field"><span class="lbl">Place:</span><input type="text" id="f-place" placeholder="Peelbergen" autocomplete="off"></div>
         <div class="field"><span class="lbl">Height:</span><input type="text" id="f-height" placeholder="1.20" autocomplete="off"></div>
       </div>
@@ -226,8 +222,8 @@ textarea::placeholder { opacity: 0.25; }
       <div class="section">
         <span class="section-label">Mode</span>
         <div class="toggle-row">
-          <button class="toggle-btn active" id="btn-dark"  onclick="setMode('dark')">Dark</button>
-          <button class="toggle-btn"        id="btn-light" onclick="setMode('light')">Light</button>
+          <button class="toggle-btn active" id="btn-dark"  onclick="setMode('dark')"></button>
+          <button class="toggle-btn"        id="btn-light" onclick="setMode('light')"></button>
         </div>
       </div>
 
@@ -305,35 +301,21 @@ const videoEl  = document.getElementById('video-el');
 const fontFace = new FontFace('Monotalic', 'url(Sources/Monotalic-WideMedium.ttf)');
 fontFace.load().then(f => { document.fonts.add(f); scheduleRender(); });
 
-const monoImg = new Image();
-monoImg.onload = scheduleRender;
-monoImg.src = 'Sources/Monogram.svg';
-
-// Inverted monogram for dark mode
-const monoImgInv = new Image();
-// We'll build an inverted version via an offscreen canvas once monoImg loads
+// Monogram: black SVG for light mode, white SVG for dark mode
+const monoImg    = new Image(); // black (light mode)
+const monoImgInv = new Image(); // white (dark mode)
 let monoImgInvReady = false;
-monoImg.onload = () => {
-  buildInvertedMono();
-  scheduleRender();
-};
 
-function buildInvertedMono() {
-  const oc = document.createElement('canvas');
-  oc.width  = 143; oc.height = 84;
-  const oc2 = oc.getContext('2d');
-  oc2.drawImage(monoImg, 0, 0);
-  // invert pixel data
-  const id = oc2.getImageData(0, 0, 143, 84);
-  for (let i = 0; i < id.data.length; i += 4) {
-    id.data[i]   = 255 - id.data[i];
-    id.data[i+1] = 255 - id.data[i+1];
-    id.data[i+2] = 255 - id.data[i+2];
-  }
-  oc2.putImageData(id, 0, 0);
-  monoImgInv.src = oc.toDataURL();
-  monoImgInv.onload = () => { monoImgInvReady = true; scheduleRender(); };
-}
+fetch('Sources/Monogram.svg')
+  .then(r => r.text())
+  .then(svg => {
+    const blob    = new Blob([svg], { type: 'image/svg+xml' });
+    const blobInv = new Blob([svg.replace(/fill="black"/g, 'fill="white"')], { type: 'image/svg+xml' });
+    monoImg.onload    = scheduleRender;
+    monoImgInv.onload = () => { monoImgInvReady = true; scheduleRender(); };
+    monoImg.src    = URL.createObjectURL(blob);
+    monoImgInv.src = URL.createObjectURL(blobInv);
+  });
 
 // ============================================================
 //  INPUTS
@@ -454,16 +436,18 @@ function drawStory(ctx, cW, cH) {
   y += G24 + LH;
 
   // Horse name
+  const horseName = (S.name || 'Horse Name').toUpperCase();
   ctx.fillStyle = S.name ? FG : FG30;
-  fillTextLS(ctx, (S.name || 'Horse Name').toUpperCase(), cW / 2, y);
+  fillTextLS(ctx, horseName, cW / 2, y);
 
   y += G12 + LH;
 
-  // Line 1 ——— Line 2
-  const l1 = (S.line1 || 'Line 1').toUpperCase();
-  const l2 = (S.line2 || 'Line 2').toUpperCase();
-  ctx.fillStyle = (S.line1 || S.line2) ? FG : FG30;
-  drawDividerRow(ctx, l1, l2, cW, y, FG, (S.line1 || S.line2) ? FG : FG30);
+  // Lineage: mother ——— father, row width tracks horse name
+  const l1 = (S.line1 || 'Mother').toUpperCase();
+  const l2 = (S.line2 || 'Father').toUpperCase();
+  const lineageColor = (S.line1 || S.line2) ? FG : FG30;
+  ctx.fillStyle = lineageColor;
+  drawLineageRow(ctx, l1, l2, horseName, cW, y, lineageColor);
 
   y += G12 + LH;
 
@@ -493,25 +477,14 @@ function drawStory(ctx, cW, cH) {
   });
 
   // —— VIDEO ————————————————————————————————————————————————
-  ctx.save();
-  ctx.beginPath();
-  rrect(ctx, vidX, vidY, vidW, vidH, 12);
-  ctx.clip();
-
   if (S.videoLoaded && videoEl.readyState >= 2) {
+    ctx.save();
+    ctx.beginPath();
+    rrect(ctx, vidX, vidY, vidW, vidH, 12);
+    ctx.clip();
     ctx.drawImage(videoEl, vidX, vidY, vidW, vidH);
-  } else {
-    ctx.fillStyle = FG15;
-    ctx.fillRect(vidX, vidY, vidW, vidH);
-    ctx.font = `${FS}px Monotalic`;
-    if ('letterSpacing' in ctx) ctx.letterSpacing = LS;
-    ctx.fillStyle = FG30;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    fillTextLS(ctx, 'Upload Video', cW / 2, vidY + vidH / 2);
-    ctx.textBaseline = 'alphabetic';
+    ctx.restore();
   }
-  ctx.restore();
 
   // —— BOTTOM SECTION (monogram) ————————————————————————————
   const mW = 64, mH = 44;
@@ -550,30 +523,34 @@ function fillTextLS(ctx, text, x, y) {
   ctx.textAlign = savedAlign;
 }
 
-/** Draw  LINE1  ———————  LINE2  row with expanding rule */
-function drawDividerRow(ctx, l1, l2, cW, y, lineColor, textColor) {
-  const padX = PAD * 4;
-  const gap  = G24;
-
+/** Lineage row: mother ——— father
+ *  Total row width matches horse name width above it (centered).
+ *  The rule fills exactly the space between the two names. */
+function drawLineageRow(ctx, l1, l2, horseName, cW, y, color) {
   if ('letterSpacing' in ctx) ctx.letterSpacing = LS;
-  const m1 = ctx.measureText(l1).width;
-  const m2 = ctx.measureText(l2).width;
 
-  ctx.fillStyle = textColor;
+  const horseW = ctx.measureText(horseName).width;
+  const l1W    = ctx.measureText(l1).width;
+  const l2W    = ctx.measureText(l2).width;
+
+  // Row width = horse name width (or l1+l2 if wider — line just disappears)
+  const rowW   = Math.max(horseW, l1W + l2W);
+  const rowX   = cW / 2 - rowW / 2;
+
+  ctx.fillStyle = color;
   ctx.textAlign = 'left';
-  fillTextLS(ctx, l1, padX, y);
+  fillTextLS(ctx, l1, rowX, y);
 
   ctx.textAlign = 'right';
-  fillTextLS(ctx, l2, cW - padX, y);
+  fillTextLS(ctx, l2, rowX + rowW, y);
 
-  // horizontal rule between them
-  const rx1 = padX + m1 + gap;
-  const rx2 = cW - padX - m2 - gap;
-  if (rx2 > rx1) {
+  // Rule fills the gap between l1 and l2
+  const rx1 = rowX + l1W;
+  const rx2 = rowX + rowW - l2W;
+  if (rx2 > rx1 + 1) {
     ctx.save();
-    ctx.strokeStyle = lineColor;
+    ctx.strokeStyle = color;
     ctx.lineWidth   = 1;
-    ctx.globalAlpha = ctx.fillStyle === 'rgba(255,255,255,0.3)' ? 0.3 : 1;
     ctx.beginPath();
     ctx.moveTo(rx1, y - LH * 0.28);
     ctx.lineTo(rx2, y - LH * 0.28);
