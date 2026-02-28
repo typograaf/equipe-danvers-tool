@@ -164,6 +164,7 @@ textarea::placeholder { opacity: 0.25; }
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  height: 100%;
 }
 
 .preview-wrap {
@@ -174,9 +175,7 @@ textarea::placeholder { opacity: 0.25; }
 
 #preview {
   display: block;
-  /* Fixed at 0.5× scale: 1080px canvas → 540px display, 24px text → 12px visual.
-     Height is auto so it follows intrinsic canvas ratio (grows if notes are long). */
-  width: 540px;
+  /* Width is set by JS after each render. Height follows intrinsic ratio. */
   height: auto;
 }
 
@@ -357,11 +356,23 @@ function setMode(m) {
 // ============================================================
 //  RENDER SCHEDULING
 // ============================================================
+
+/** Draw story to preview canvas, then fit it to the viewport. */
+function renderPreview() {
+  drawStory(pCtx, W);
+  // Scale so the preview fits with 24px top+bottom padding,
+  // never larger than the actual export (1:1 scale).
+  const cH     = pCtx.canvas.height;
+  const availH = window.innerHeight - 20 - 48; // 20px wrap, 24px top+24px bottom
+  const scale  = Math.min(1, availH / cH);
+  preview.style.width = Math.round(W * scale) + 'px';
+}
+
 let rafPending = false;
 function scheduleRender() {
   if (!rafPending) {
     rafPending = true;
-    requestAnimationFrame(() => { rafPending = false; drawStory(pCtx, W); });
+    requestAnimationFrame(() => { rafPending = false; renderPreview(); });
   }
 }
 
@@ -369,7 +380,7 @@ let loopRaf = null;
 function startRenderLoop() {
   if (loopRaf) cancelAnimationFrame(loopRaf);
   function loop() {
-    drawStory(pCtx, W);
+    renderPreview();
     loopRaf = requestAnimationFrame(loop);
   }
   loop();
